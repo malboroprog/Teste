@@ -31,7 +31,7 @@ jobs:
           python -m pip install --upgrade pip setuptools wheel
           # garantir pytest sempre
           python -m pip install pytest
-          # instalar demais dependências se existir arquivo
+          # instalar demais dependÃªncias se existir arquivo
           if [ -f requirements-dev.txt ]; then
             echo "requirements-dev.txt found; installing..."
             cat requirements-dev.txt || true
@@ -71,12 +71,19 @@ jobs:
           done
           echo "/status is up"
 
-      - name: Run pytest (unit + integration)
+      - name: Run pytest (collect + run, verbose)
         run: |
-          python -m pytest -q
+          echo "PWD: $(pwd)"
+          echo "Listing top-level files:"
+          ls -la || true
+          echo "Listing tests/ (if exists):"
+          ls -la tests || true
+          echo "pytest collect-only:"
+          python -m pytest --collect-only -vv || true
+          echo "pytest verbose run (shows skipped/collected):"
+          python -m pytest -vv -r a || true
         env:
           PYTHONUNBUFFERED: 1
-
       - name: Upload mock logs on failure
         if: failure()
         uses: actions/upload-artifact@v4
