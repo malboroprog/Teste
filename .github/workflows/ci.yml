@@ -1,4 +1,4 @@
-﻿name: CI Tests and Windows Build
+﻿name: CI Autoformat Lint Test and Windows Build
 
 on:
   push:
@@ -11,9 +11,48 @@ env:
   PYTHONUNBUFFERED: 1
 
 jobs:
+  format-and-lint:
+    name: Autoformat and Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.11
+
+      - name: Install formatting and lint tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install isort black ruff
+        shell: bash
+
+      - name: Run isort (autoformat)
+        run: |
+          isort .
+        shell: bash
+
+      - name: Run black (autoformat)
+        run: |
+          black .
+        shell: bash
+
+      - name: Show formatting diff
+        run: |
+          git --no-pager diff --name-only || true
+        shell: bash
+
+      - name: Run ruff (fail on lint errors)
+        run: |
+          ruff check .
+        shell: bash
+
   test:
     name: Run tests on ${{ matrix.os }} Python ${{ matrix.python-version }}
     runs-on: ${{ matrix.os }}
+    needs: format-and-lint
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
@@ -81,6 +120,7 @@ jobs:
 
       - name: Build executable with PyInstaller
         run: |
+          # Ajuste o entrypoint se necessário (ex: src\cli.py)
           pyinstaller --onefile --name myapp src\cli.py
         shell: powershell
 
