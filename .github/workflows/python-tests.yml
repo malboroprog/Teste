@@ -25,13 +25,19 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: '3.x'
-
-      - name: Install dependencies (verbose)
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+ (verbose)
         run: |
           python -m pip install --upgrade pip setuptools wheel
           # garantir pytest sempre
           python -m pip install pytest
-          # instalar demais dependÃªncias se existir arquivo
+          # instalar demais dependÃƒÂªncias se existir arquivo
           if [ -f requirements-dev.txt ]; then
             echo "requirements-dev.txt found; installing..."
             cat requirements-dev.txt || true
