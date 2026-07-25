@@ -33,7 +33,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pip-
  (verbose)
-        run: |
+        run: 
           python -m pip install --upgrade pip setuptools wheel
           # garantir pytest sempre
           python -m pip install pytest
