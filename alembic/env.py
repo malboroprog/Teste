@@ -14,7 +14,7 @@ if repo_root not in sys.path:
 # try to import engine from app; fallback to None
 try:
     from src.app.crud import engine as app_engine
-except Exception:
+except (ImportError, ModuleNotFoundError):
     app_engine = None
 
 config = context.config
