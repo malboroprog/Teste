@@ -1,0 +1,63 @@
+name: Python tests
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
+
+      - name: Start mock client in background
+        run: |
+          mkdir -p ci-logs
+          nohup python mock_client/mock_client.py > ci-logs/mock.log 2>&1 &
+          echo "Mock started (background). Logs: ci-logs/mock.log"
+
+      - name: Wait for mock /status
+        run: |
+          set -e
+          MAX_WAIT=60
+          SLEEP=1
+          elapsed=0
+          until [ "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/status)" = "200" ]; do
+            elapsed=$((elapsed + SLEEP))
+            if [ $elapsed -ge $MAX_WAIT ]; then
+              echo "Timeout waiting for mock /status"
+              echo "---- Last mock log ----"
+              tail -n 200 ci-logs/mock.log || true
+              exit 1
+            fi
+            sleep $SLEEP
+          done
+          echo "/status is up"
+
+      - name: Run pytest (unit + integration)
+        run: |
+          python -m pytest -q
+        env:
+          PYTHONUNBUFFERED: 1
+
+      - name: Upload mock logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mock-log
+          path: ci-logs/mock.log
