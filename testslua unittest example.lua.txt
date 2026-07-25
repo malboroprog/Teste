@@ -1,0 +1,22 @@
+-- tests/lua_unit/test_example.lua
+-- Teste unitário com LuaUnit para scripts/example_script.lua
+
+-- garantir paths para localizar módulos em ./scripts
+package.path = package.path .. ";./?.lua;./scripts/?.lua"
+
+local luaunit = require('luaunit')
+local example = require('example_script') -- espera scripts/example_script.lua retornando módulo
+
+TestExample = {}
+
+function TestExample:test_run_returns_table()
+  local fake_api = {
+    log = function(msg) end,
+    getPosition = function() return {x=1,y=2,z=7} end
+  }
+  local res = example.run(fake_api)
+  luaunit.assertIsTable(res)
+  luaunit.assertEquals(res.success, true)
+end
+
+os.exit(luaunit.LuaUnit.run())

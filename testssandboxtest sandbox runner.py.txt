@@ -1,0 +1,22 @@
+# tests/sandbox/test_sandbox_runner.py
+# Testa o sandbox_runner.py usando subprocess e valida a saída JSON
+
+import json
+import subprocess
+import sys
+import pytest
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[2]
+
+def test_sandbox_runner_example():
+    manifest = str(ROOT / "manifests" / "example_manifest.json")
+    script = str(ROOT / "scripts" / "example_script.lua")
+    cmd = [sys.executable, str(ROOT / "sandbox" / "sandbox_runner.py"), manifest, script]
+    proc = subprocess.run(cmd, capture_output=True, text=True, timeout=20)
+    # O runner imprime JSON no stdout
+    assert proc.returncode == 0
+    assert proc.stdout, f"stdout vazio, stderr: {proc.stderr}"
+    out = json.loads(proc.stdout)
+    assert out["manifest"]["id"] == "cavebot_route_01"
+    assert "stdout" in out

@@ -1,0 +1,4 @@
+﻿[pytest]
+norecursedirs = Lib .venv
+addopts = -q
+testpaths = tests

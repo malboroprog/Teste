@@ -1,0 +1,72 @@
+# run_integration_tests_wait_json.ps1
+# Ajuste estes valores conforme necessário
+$ProjectRoot = "E:\teste\lua-5.5.0"
+$Port = 8080
+$ExpectedKey = "voc"
+$ExpectedValue = "Paladin"
+$MaxWaitSeconds = 30
+$PollIntervalSeconds = 1
+
+# Permitir execução apenas nesta sessão
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force
+
+# Ir para a raiz do projeto e ativar venv na sessão atual
+Set-Location $ProjectRoot
+if (Test-Path ".\.venv\Scripts\Activate.ps1") {
+    . .\.venv\Scripts\Activate.ps1
+} else {
+    Write-Error "Activate.ps1 não encontrado em $ProjectRoot\.venv\Scripts. Verifique o venv."
+    exit 1
+}
+
+# Iniciar mock em nova janela do PowerShell (janela ficará aberta para logs)
+$mockCommand = "Set-Location `"$ProjectRoot`"; . .\.venv\Scripts\Activate.ps1; python .\mock_client\mock_client.py"
+Start-Process powershell -ArgumentList '-NoExit','-Command',$mockCommand
+
+# Aguarda ativamente o endpoint /status responder com o JSON esperado
+$startTime = Get-Date
+$deadline = $startTime.AddSeconds($MaxWaitSeconds)
+$ready = $false
+Write-Host "Aguardando http://127.0.0.1:$Port/status responder com `$($ExpectedKey) = $ExpectedValue` (timeout $MaxWaitSeconds s)..."
+
+while ((Get-Date) -lt $deadline) {
+    try {
+        $resp = Invoke-WebRequest -Uri "http://127.0.0.1:$Port/status" -UseBasicParsing -TimeoutSec 2 -ErrorAction Stop
+        if ($resp.StatusCode -eq 200) {
+            try {
+                $json = $resp.Content | ConvertFrom-Json
+                if ($null -ne $json.$ExpectedKey -and ($json.$ExpectedKey -eq $ExpectedValue)) {
+                    Write-Host "Endpoint /status respondeu com o JSON esperado."
+                    $ready = $true
+                    break
+                } else {
+                    Write-Host "Endpoint respondeu, mas `$ExpectedKey` não corresponde. Valor atual: $($json.$ExpectedKey)"
+                }
+            } catch {
+                Write-Host "Resposta recebida, mas não é JSON válido. Tentando novamente..."
+            }
+        }
+    } catch {
+        # silencioso, apenas aguarda e tenta novamente
+    }
+    Start-Sleep -Seconds $PollIntervalSeconds
+}
+
+if (-not $ready) {
+    Write-Error "Timeout: o endpoint /status não respondeu com `$ExpectedKey = $ExpectedValue` em $MaxWaitSeconds segundos."
+    Write-Host "Verifique a janela do mock para erros e tente novamente."
+    exit 1
+}
+
+# Executar testes de integração usando o python do venv
+Write-Host "Executando testes de integração..."
+python -m pytest tests/integration -q
+$exitCode = $LASTEXITCODE
+
+if ($exitCode -eq 0) {
+    Write-Host "Testes de integração concluídos com sucesso."
+} else {
+    Write-Host "Testes de integração falharam. Código de saída: $exitCode"
+}
+
+exit $exitCode

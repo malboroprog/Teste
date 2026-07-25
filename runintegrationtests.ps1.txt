@@ -1,0 +1,38 @@
+# run_integration_tests.ps1
+# Ajuste este caminho para a raiz do seu projeto
+$ProjectRoot = "E:\teste\lua-5.5.0"
+
+# Tempo de espera (segundos) para o mock iniciar antes de rodar os testes
+$MockStartupDelay = 3
+
+# Segurança: permitir execução apenas nesta sessão
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force
+
+# Ativar venv na sessão atual
+Set-Location $ProjectRoot
+if (Test-Path ".\.venv\Scripts\Activate.ps1") {
+    . .\.venv\Scripts\Activate.ps1
+} else {
+    Write-Error "Activate.ps1 não encontrado em $ProjectRoot\.venv\Scripts. Verifique o venv."
+    exit 1
+}
+
+# Iniciar mock em nova janela do PowerShell (janela ficará aberta para logs)
+$mockCommand = "Set-Location `"$ProjectRoot`"; . .\.venv\Scripts\Activate.ps1; python .\mock_client\mock_client.py"
+Start-Process powershell -ArgumentList '-NoExit','-Command',$mockCommand
+
+# Pequena espera para o mock subir (ajuste se necessário)
+Start-Sleep -Seconds $MockStartupDelay
+
+# Executar testes de integração na janela atual (usa o python do venv)
+Write-Host "Executando testes de integração..."
+python -m pytest tests/integration -q
+$exitCode = $LASTEXITCODE
+
+if ($exitCode -eq 0) {
+    Write-Host "Testes de integração concluídos com sucesso."
+} else {
+    Write-Host "Testes de integração falharam. Código de saída: $exitCode"
+}
+
+exit $exitCode

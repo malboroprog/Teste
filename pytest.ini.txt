@@ -1,0 +1,7 @@
+[pytest]
+# evita recursão em diretórios do CPython e no venv
+norecursedirs = Lib .venv
+# opções padrão (quiet)
+addopts = -q
+# diretório padrão de testes
+testpaths = tests
