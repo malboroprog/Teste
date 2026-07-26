@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+﻿#!/usr/bin/env python
 # Copyright 2014 The Chromium Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE.chromium file.
@@ -220,473 +220,747 @@ The bytes in the generated array has the following meaning:
 10: 0x82 <return_value> 0x82 & 0x0F -> return 2
 """
 
-import sys
-import os.path
 import hashlib
+import os.path
+import sys
+
 
 class InputError(Exception):
-  """Exception raised for errors in the input file."""
+    """Exception raised for errors in the input file."""
+
 
 # Length of a character starting at a given byte.
-char_length_table = ( 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  # 0x00-0x0F
-                      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  # 0x10-0x1F
-                      1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,  # 0x20-0x2F
-                      1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,  # 0x30-x03F
-                      1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,  # 0x40-0x4F
-                      1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,  # 0x50-x05F
-                      1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,  # 0x60-0x6F
-                      1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,  # 0x70-x07F
-                      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  # 0x80-0x8F
-                      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  # 0x90-0x9F
-                      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  # 0xA0-0xAF
-                      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  # 0xB0-0xBF
-                      2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,  # 0xC0-0xCF
-                      2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,  # 0xD0-0xDF
-                      3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,  # 0xE0-0xEF
-                      4, 4, 4, 4, 4, 4, 4, 4, 0, 0, 0, 0, 0, 0, 0, 0 ) # 0xF0-0xFF
+char_length_table = (
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,  # 0x00-0x0F
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,  # 0x10-0x1F
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,  # 0x20-0x2F
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,  # 0x30-x03F
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,  # 0x40-0x4F
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,  # 0x50-x05F
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,  # 0x60-0x6F
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,  # 0x70-x07F
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,  # 0x80-0x8F
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,  # 0x90-0x9F
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,  # 0xA0-0xAF
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,  # 0xB0-0xBF
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,  # 0xC0-0xCF
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,  # 0xD0-0xDF
+    3,
+    3,
+    3,
+    3,
+    3,
+    3,
+    3,
+    3,
+    3,
+    3,
+    3,
+    3,
+    3,
+    3,
+    3,
+    3,  # 0xE0-0xEF
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+)  # 0xF0-0xFF
+
 
 def to_bytes(n):
-  """Converts an integer value to a bytes object."""
-  return bytes(bytearray((n,)))
+    """Converts an integer value to a bytes object."""
+    return bytes(bytearray((n,)))
+
 
 def to_dafsa(words, utf_mode):
-  """Generates a DAFSA from a word list and returns the source node.
+    """Generates a DAFSA from a word list and returns the source node.
 
-  Each word is split into characters so that each character is represented by
-  a unique node. It is assumed the word list is not empty.
-  """
-  if not words:
-    raise InputError('The domain list must not be empty')
-  def to_nodes(word, multibyte_length):
-    """Split words into characters"""
-    byte = ord(word[:1])
-    if multibyte_length:
-      # Consume next byte in multibyte sequence.
-      if byte & 0xC0 != 0x80:
-        raise InputError('Invalid UTF-8 multibyte sequence')
-      return to_bytes(byte ^ 0xC0), [to_nodes(word[1:], multibyte_length - 1)]
-    char_length = char_length_table[byte]
-    if char_length == 1:
-      # 7-bit printable ASCII.
-      if len(word) == 1:
-        return to_bytes(int(word[:1], 16) & 0x0F), [None]
-      return word[:1], [to_nodes(word[1:], 0)]
-    elif char_length > 1:
-      # Leading byte in multibyte sequence.
-      if not utf_mode:
-        raise InputError('UTF-8 encoded characters are not allowed in ASCII mode')
-      if len(word) <= char_length:
-        raise InputError('Unterminated UTF-8 multibyte sequence')
-      return to_bytes(0x1F), [(to_bytes(byte ^ 0x80), [to_nodes(word[1:], char_length - 1)])]
-    # Unexpected character.
-    raise InputError('Domain names must be printable ASCII or UTF-8')
+    Each word is split into characters so that each character is represented by
+    a unique node. It is assumed the word list is not empty.
+    """
+    if not words:
+        raise InputError("The domain list must not be empty")
 
-  return [to_nodes(word, 0) for word in words]
+    def to_nodes(word, multibyte_length):
+        """Split words into characters"""
+        byte = ord(word[:1])
+        if multibyte_length:
+            # Consume next byte in multibyte sequence.
+            if byte & 0xC0 != 0x80:
+                raise InputError("Invalid UTF-8 multibyte sequence")
+            return to_bytes(byte ^ 0xC0), [to_nodes(word[1:], multibyte_length - 1)]
+        char_length = char_length_table[byte]
+        if char_length == 1:
+            # 7-bit printable ASCII.
+            if len(word) == 1:
+                return to_bytes(int(word[:1], 16) & 0x0F), [None]
+            return word[:1], [to_nodes(word[1:], 0)]
+        elif char_length > 1:
+            # Leading byte in multibyte sequence.
+            if not utf_mode:
+                raise InputError(
+                    "UTF-8 encoded characters are not allowed in ASCII mode"
+                )
+            if len(word) <= char_length:
+                raise InputError("Unterminated UTF-8 multibyte sequence")
+            return to_bytes(0x1F), [
+                (to_bytes(byte ^ 0x80), [to_nodes(word[1:], char_length - 1)])
+            ]
+        # Unexpected character.
+        raise InputError("Domain names must be printable ASCII or UTF-8")
+
+    return [to_nodes(word, 0) for word in words]
+
 
 def to_words(node):
-  """Generates a word list from all paths starting from an internal node."""
-  if not node:
-    return [b'']
-  return [(node[0] + word) for child in node[1] for word in to_words(child)]
+    """Generates a word list from all paths starting from an internal node."""
+    if not node:
+        return [b""]
+    return [(node[0] + word) for child in node[1] for word in to_words(child)]
 
 
 def reverse(dafsa):
-  """Generates a new DAFSA that is reversed, so that the old sink node becomes
-  the new source node.
-  """
-  sink = []
-  nodemap = {}
-
-  def dfs(node, parent):
-    """Creates reverse nodes.
-
-    A new reverse node will be created for each old node. The new node will
-    get a reversed label and the parents of the old node as children.
+    """Generates a new DAFSA that is reversed, so that the old sink node becomes
+    the new source node.
     """
-    if not node:
-      sink.append(parent)
-    elif id(node) not in nodemap:
-      nodemap[id(node)] = (node[0][::-1], [parent])
-      for child in node[1]:
-        dfs(child, nodemap[id(node)])
-    else:
-      nodemap[id(node)][1].append(parent)
+    sink = []
+    nodemap = {}
 
-  for node in dafsa:
-    dfs(node, None)
-  return sink
+    def dfs(node, parent):
+        """Creates reverse nodes.
+
+        A new reverse node will be created for each old node. The new node will
+        get a reversed label and the parents of the old node as children.
+        """
+        if not node:
+            sink.append(parent)
+        elif id(node) not in nodemap:
+            nodemap[id(node)] = (node[0][::-1], [parent])
+            for child in node[1]:
+                dfs(child, nodemap[id(node)])
+        else:
+            nodemap[id(node)][1].append(parent)
+
+    for node in dafsa:
+        dfs(node, None)
+    return sink
 
 
 def join_labels(dafsa):
-  """Generates a new DAFSA where internal nodes are merged if there is a one to
-  one connection.
-  """
-  parentcount = {id(None): 2}
-  nodemap = {id(None): None}
+    """Generates a new DAFSA where internal nodes are merged if there is a one to
+    one connection.
+    """
+    parentcount = {id(None): 2}
+    nodemap = {id(None): None}
 
-  def count_parents(node):
-    """Count incoming references"""
-    if id(node) in parentcount:
-      parentcount[id(node)] += 1
-    else:
-      parentcount[id(node)] = 1
-      for child in node[1]:
-        count_parents(child)
+    def count_parents(node):
+        """Count incoming references"""
+        if id(node) in parentcount:
+            parentcount[id(node)] += 1
+        else:
+            parentcount[id(node)] = 1
+            for child in node[1]:
+                count_parents(child)
 
-  def join(node):
-    """Create new nodes"""
-    if id(node) not in nodemap:
-      children = [join(child) for child in node[1]]
-      if len(children) == 1 and parentcount[id(node[1][0])] == 1:
-        child = children[0]
-        nodemap[id(node)] = (node[0] + child[0], child[1])
-      else:
-        nodemap[id(node)] = (node[0], children)
-    return nodemap[id(node)]
+    def join(node):
+        """Create new nodes"""
+        if id(node) not in nodemap:
+            children = [join(child) for child in node[1]]
+            if len(children) == 1 and parentcount[id(node[1][0])] == 1:
+                child = children[0]
+                nodemap[id(node)] = (node[0] + child[0], child[1])
+            else:
+                nodemap[id(node)] = (node[0], children)
+        return nodemap[id(node)]
 
-  for node in dafsa:
-    count_parents(node)
-  return [join(node) for node in dafsa]
+    for node in dafsa:
+        count_parents(node)
+    return [join(node) for node in dafsa]
 
 
 def join_suffixes(dafsa):
-  """Generates a new DAFSA where nodes that represent the same word lists
-  towards the sink are merged.
-  """
-  nodemap = {frozenset((b'',)): None}
-
-  def join(node):
-    """Returns a matching node. A new node is created if no matching node
-    exists. The graph is accessed in dfs order.
+    """Generates a new DAFSA where nodes that represent the same word lists
+    towards the sink are merged.
     """
-    suffixes = frozenset(to_words(node))
-    if suffixes not in nodemap:
-      nodemap[suffixes] = (node[0], [join(child) for child in node[1]])
-    return nodemap[suffixes]
+    nodemap = {frozenset((b"",)): None}
 
-  return [join(node) for node in dafsa]
+    def join(node):
+        """Returns a matching node. A new node is created if no matching node
+        exists. The graph is accessed in dfs order.
+        """
+        suffixes = frozenset(to_words(node))
+        if suffixes not in nodemap:
+            nodemap[suffixes] = (node[0], [join(child) for child in node[1]])
+        return nodemap[suffixes]
+
+    return [join(node) for node in dafsa]
 
 
 def top_sort(dafsa):
-  """Generates list of nodes in topological sort order."""
-  incoming = {}
+    """Generates list of nodes in topological sort order."""
+    incoming = {}
 
-  def count_incoming(node):
-    """Counts incoming references."""
-    if node:
-      if id(node) not in incoming:
-        incoming[id(node)] = 1
+    def count_incoming(node):
+        """Counts incoming references."""
+        if node:
+            if id(node) not in incoming:
+                incoming[id(node)] = 1
+                for child in node[1]:
+                    count_incoming(child)
+            else:
+                incoming[id(node)] += 1
+
+    for node in dafsa:
+        count_incoming(node)
+
+    for node in dafsa:
+        incoming[id(node)] -= 1
+
+    waiting = [node for node in dafsa if incoming[id(node)] == 0]
+    nodes = []
+
+    while waiting:
+        node = waiting.pop()
+        assert incoming[id(node)] == 0
+        nodes.append(node)
         for child in node[1]:
-          count_incoming(child)
-      else:
-        incoming[id(node)] += 1
-
-  for node in dafsa:
-    count_incoming(node)
-
-  for node in dafsa:
-    incoming[id(node)] -= 1
-
-  waiting = [node for node in dafsa if incoming[id(node)] == 0]
-  nodes = []
-
-  while waiting:
-    node = waiting.pop()
-    assert incoming[id(node)] == 0
-    nodes.append(node)
-    for child in node[1]:
-      if child:
-        incoming[id(child)] -= 1
-        if incoming[id(child)] == 0:
-          waiting.append(child)
-  return nodes
+            if child:
+                incoming[id(child)] -= 1
+                if incoming[id(child)] == 0:
+                    waiting.append(child)
+    return nodes
 
 
 def encode_links(children, offsets, current):
-  """Encodes a list of children as one, two or three byte offsets."""
-  if not children[0]:
-    # This is an <end_label> node and no links follow such nodes
-    assert len(children) == 1
-    return []
-  guess = 3 * len(children)
-  assert children
-  children = sorted(children, key=lambda x: -offsets[id(x)])
-  while True:
-    offset = current + guess
-    buf = []
-    for child in children:
-      last = len(buf)
-      distance = offset - offsets[id(child)]
-      assert distance > 0 and distance < (1 << 21)
+    """Encodes a list of children as one, two or three byte offsets."""
+    if not children[0]:
+        # This is an <end_label> node and no links follow such nodes
+        assert len(children) == 1
+        return []
+    guess = 3 * len(children)
+    assert children
+    children = sorted(children, key=lambda x: -offsets[id(x)])
+    while True:
+        offset = current + guess
+        buf = []
+        for child in children:
+            last = len(buf)
+            distance = offset - offsets[id(child)]
+            assert distance > 0 and distance < (1 << 21)
 
-      if distance < (1 << 6):
-        # A 6-bit offset: "s0xxxxxx"
-        buf.append(distance)
-      elif distance < (1 << 13):
-        # A 13-bit offset: "s10xxxxxxxxxxxxx"
-        buf.append(0x40 | (distance >> 8))
-        buf.append(distance & 0xFF)
-      else:
-        # A 21-bit offset: "s11xxxxxxxxxxxxxxxxxxxxx"
-        buf.append(0x60 | (distance >> 16))
-        buf.append((distance >> 8) & 0xFF)
-        buf.append(distance & 0xFF)
-      # Distance in first link is relative to following record.
-      # Distance in other links are relative to previous link.
-      offset -= distance
-    if len(buf) == guess:
-      break
-    guess = len(buf)
-  # Set most significant bit to mark end of links in this node.
-  buf[last] |= (1 << 7)
-  buf.reverse()
-  return buf
+            if distance < (1 << 6):
+                # A 6-bit offset: "s0xxxxxx"
+                buf.append(distance)
+            elif distance < (1 << 13):
+                # A 13-bit offset: "s10xxxxxxxxxxxxx"
+                buf.append(0x40 | (distance >> 8))
+                buf.append(distance & 0xFF)
+            else:
+                # A 21-bit offset: "s11xxxxxxxxxxxxxxxxxxxxx"
+                buf.append(0x60 | (distance >> 16))
+                buf.append((distance >> 8) & 0xFF)
+                buf.append(distance & 0xFF)
+            # Distance in first link is relative to following record.
+            # Distance in other links are relative to previous link.
+            offset -= distance
+        if len(buf) == guess:
+            break
+        guess = len(buf)
+    # Set most significant bit to mark end of links in this node.
+    buf[last] |= 1 << 7
+    buf.reverse()
+    return buf
 
 
 def encode_prefix(label):
-  """Encodes a node label as a list of bytes without a trailing high byte.
+    """Encodes a node label as a list of bytes without a trailing high byte.
 
-  This method encodes a node if there is exactly one child  and the
-  child follows immediately after so that no jump is needed. This label
-  will then be a prefix to the label in the child node.
-  """
-  assert label
-  return [c for c in bytearray(reversed(label))]
+    This method encodes a node if there is exactly one child  and the
+    child follows immediately after so that no jump is needed. This label
+    will then be a prefix to the label in the child node.
+    """
+    assert label
+    return [c for c in bytearray(reversed(label))]
 
 
 def encode_label(label):
-  """Encodes a node label as a list of bytes with a trailing high byte >0x80.
-  """
-  buf = encode_prefix(label)
-  # Set most significant bit to mark end of label in this node.
-  buf[0] |= (1 << 7)
-  return buf
+    """Encodes a node label as a list of bytes with a trailing high byte >0x80."""
+    buf = encode_prefix(label)
+    # Set most significant bit to mark end of label in this node.
+    buf[0] |= 1 << 7
+    return buf
 
 
 def encode(dafsa, utf_mode):
-  """Encodes a DAFSA to a list of bytes"""
-  output = []
-  offsets = {}
+    """Encodes a DAFSA to a list of bytes"""
+    output = []
+    offsets = {}
 
-  for node in reversed(top_sort(dafsa)):
-    if (len(node[1]) == 1 and node[1][0] and
-        (offsets[id(node[1][0])] == len(output))):
-      output.extend(encode_prefix(node[0]))
-    else:
-      output.extend(encode_links(node[1], offsets, len(output)))
-      output.extend(encode_label(node[0]))
-    offsets[id(node)] = len(output)
+    for node in reversed(top_sort(dafsa)):
+        if (
+            len(node[1]) == 1
+            and node[1][0]
+            and (offsets[id(node[1][0])] == len(output))
+        ):
+            output.extend(encode_prefix(node[0]))
+        else:
+            output.extend(encode_links(node[1], offsets, len(output)))
+            output.extend(encode_label(node[0]))
+        offsets[id(node)] = len(output)
 
-  output.extend(encode_links(dafsa, offsets, len(output)))
-  output.reverse()
-  if utf_mode:
-    output.append(0x01)
-  return output
+    output.extend(encode_links(dafsa, offsets, len(output)))
+    output.reverse()
+    if utf_mode:
+        output.append(0x01)
+    return output
 
 
 def to_cxx(data, codecs):
-  """Generates C/C++ code from a list of encoded bytes."""
-  text = b'/* This file has been generated by psl-make-dafsa. DO NOT EDIT!\n\n'
-  text += b'The byte array encodes effective tld names. See psl-make-dafsa source for'
-  text += b' documentation.'
-  text += b'*/\n\n'
-  text += b'static const unsigned char kDafsa['
-  text += bytes(str(len(data)), **codecs)
-  text += b'] = {\n'
-  for i in range(0, len(data), 12):
-    text += b'  '
-    text += bytes(', '.join('0x%02x' % byte for byte in data[i:i + 12]), **codecs)
-    text += b',\n'
-  text += b'};\n'
-  return text
+    """Generates C/C++ code from a list of encoded bytes."""
+    text = b"/* This file has been generated by psl-make-dafsa. DO NOT EDIT!\n\n"
+    text += b"The byte array encodes effective tld names. See psl-make-dafsa source for"
+    text += b" documentation."
+    text += b"*/\n\n"
+    text += b"static const unsigned char kDafsa["
+    text += bytes(str(len(data)), **codecs)
+    text += b"] = {\n"
+    for i in range(0, len(data), 12):
+        text += b"  "
+        text += bytes(", ".join("0x%02x" % byte for byte in data[i : i + 12]), **codecs)
+        text += b",\n"
+    text += b"};\n"
+    return text
+
 
 def sha1_file(name):
-  sha1 = hashlib.sha1()
-  with open(name, 'rb') as f:
-    while True:
-        data = f.read(65536)
-        if not data:
-            break
-        sha1.update(data)
-  return sha1.hexdigest()
+    sha1 = hashlib.sha1()
+    with open(name, "rb") as f:
+        while True:
+            data = f.read(65536)
+            if not data:
+                break
+            sha1.update(data)
+    return sha1.hexdigest()
+
 
 def to_cxx_plus(data, codecs):
-  """Generates C/C++ code from a word list plus some variable assignments as needed by libpsl"""
-  text = to_cxx(data, codecs)
-  text += b'static time_t _psl_file_time = %d;\n' % os.stat(psl_input_file).st_mtime
-  text += b'static int _psl_nsuffixes = %d;\n' % psl_nsuffixes
-  text += b'static int _psl_nexceptions = %d;\n' % psl_nexceptions
-  text += b'static int _psl_nwildcards = %d;\n' % psl_nwildcards
-  text += b'static const char _psl_sha1_checksum[] = "%s";\n' % bytes(sha1_file(psl_input_file), **codecs)
-  text += b'static const char _psl_filename[] = "%s";\n' % bytes(psl_input_file, **codecs)
-  return text
+    """Generates C/C++ code from a word list plus some variable assignments as needed by libpsl"""  # noqa: E501
+    text = to_cxx(data, codecs)
+    text += b"static time_t _psl_file_time = %d;\n" % os.stat(psl_input_file).st_mtime
+    text += b"static int _psl_nsuffixes = %d;\n" % psl_nsuffixes
+    text += b"static int _psl_nexceptions = %d;\n" % psl_nexceptions
+    text += b"static int _psl_nwildcards = %d;\n" % psl_nwildcards
+    text += b'static const char _psl_sha1_checksum[] = "%s";\n' % bytes(
+        sha1_file(psl_input_file), **codecs
+    )
+    text += b'static const char _psl_filename[] = "%s";\n' % bytes(
+        psl_input_file, **codecs
+    )
+    return text
+
 
 def words_to_whatever(words, converter, utf_mode, codecs):
-  """Generates C/C++ code from a word list"""
-  dafsa = to_dafsa(words, utf_mode)
-  for fun in (reverse, join_suffixes, reverse, join_suffixes, join_labels):
-    dafsa = fun(dafsa)
-  return converter(encode(dafsa, utf_mode), codecs)
+    """Generates C/C++ code from a word list"""
+    dafsa = to_dafsa(words, utf_mode)
+    for fun in (reverse, join_suffixes, reverse, join_suffixes, join_labels):
+        dafsa = fun(dafsa)
+    return converter(encode(dafsa, utf_mode), codecs)
 
 
 def words_to_cxx(words, utf_mode, codecs):
-  """Generates C/C++ code from a word list"""
-  return words_to_whatever(words, to_cxx, utf_mode, codecs)
+    """Generates C/C++ code from a word list"""
+    return words_to_whatever(words, to_cxx, utf_mode, codecs)
+
 
 def words_to_cxx_plus(words, utf_mode, codecs):
-  """Generates C/C++ code from a word list plus some variable assignments as needed by libpsl"""
-  return words_to_whatever(words, to_cxx_plus, utf_mode, codecs)
+    """Generates C/C++ code from a word list plus some variable assignments as needed by libpsl"""  # noqa: E501
+    return words_to_whatever(words, to_cxx_plus, utf_mode, codecs)
+
 
 def words_to_binary(words, utf_mode, codecs):
-  """Generates C/C++ code from a word list"""
-  return b'.DAFSA@PSL_0   \n' + words_to_whatever(words, lambda x, _: bytearray(x), utf_mode, codecs)
+    """Generates C/C++ code from a word list"""
+    return b".DAFSA@PSL_0   \n" + words_to_whatever(
+        words, lambda x, _: bytearray(x), utf_mode, codecs
+    )
 
 
 def parse_psl(infile, utf_mode, codecs):
-  """Parses PSL file and extract strings and return code"""
-  PSL_FLAG_EXCEPTION = (1<<0)
-  PSL_FLAG_WILDCARD = (1<<1)
-  PSL_FLAG_ICANN = (1<<2) # entry of ICANN section
-  PSL_FLAG_PRIVATE = (1<<3) # entry of PRIVATE section
-  PSL_FLAG_PLAIN = (1<<4) #just used for PSL syntax checking
+    """Parses PSL file and extract strings and return code"""
+    PSL_FLAG_EXCEPTION = 1 << 0
+    PSL_FLAG_WILDCARD = 1 << 1
+    PSL_FLAG_ICANN = 1 << 2  # entry of ICANN section
+    PSL_FLAG_PRIVATE = 1 << 3  # entry of PRIVATE section
+    PSL_FLAG_PLAIN = 1 << 4  # just used for PSL syntax checking
 
-  global psl_nsuffixes, psl_nexceptions, psl_nwildcards
+    global psl_nsuffixes, psl_nexceptions, psl_nwildcards
 
-  psl = {}
-  section = 0
+    psl = {}
+    section = 0
 
-  for line in infile:
-    line = bytes(line.strip(), **codecs)
-    if not line:
-      continue
+    for line in infile:
+        line = bytes(line.strip(), **codecs)
+        if not line:
+            continue
 
-    if line.startswith(b'//'):
-      if section == 0:
-        if b'===BEGIN ICANN DOMAINS===' in line:
-          section = PSL_FLAG_ICANN
-        elif b'===BEGIN PRIVATE DOMAINS===' in line:
-          section = PSL_FLAG_PRIVATE
-      elif section == PSL_FLAG_ICANN and b'===END ICANN DOMAINS===' in line:
-        section = 0
-      elif section == PSL_FLAG_PRIVATE and b'===END PRIVATE DOMAINS===' in line:
-        section = 0
-      continue # skip comments
+        if line.startswith(b"//"):
+            if section == 0:
+                if b"===BEGIN ICANN DOMAINS===" in line:
+                    section = PSL_FLAG_ICANN
+                elif b"===BEGIN PRIVATE DOMAINS===" in line:
+                    section = PSL_FLAG_PRIVATE
+            elif section == PSL_FLAG_ICANN and b"===END ICANN DOMAINS===" in line:
+                section = 0
+            elif section == PSL_FLAG_PRIVATE and b"===END PRIVATE DOMAINS===" in line:
+                section = 0
+            continue  # skip comments
 
-    if line[:1] == b'!':
-      psl_nexceptions += 1
-      flags = PSL_FLAG_EXCEPTION | section
-      line = line[1:]
-    elif line[:1] == b'*':
-      if line[1:2] != b'.':
-        print('Unsupported kind of rule (ignored): %s' % line)
-        continue
-      psl_nwildcards += 1
-      psl_nsuffixes += 1
-      flags = PSL_FLAG_WILDCARD | PSL_FLAG_PLAIN | section
-      line = line[2:]
-    else:
-      psl_nsuffixes += 1
-      flags = PSL_FLAG_PLAIN | section
+        if line[:1] == b"!":
+            psl_nexceptions += 1
+            flags = PSL_FLAG_EXCEPTION | section
+            line = line[1:]
+        elif line[:1] == b"*":
+            if line[1:2] != b".":
+                print("Unsupported kind of rule (ignored): %s" % line)
+                continue
+            psl_nwildcards += 1
+            psl_nsuffixes += 1
+            flags = PSL_FLAG_WILDCARD | PSL_FLAG_PLAIN | section
+            line = line[2:]
+        else:
+            psl_nsuffixes += 1
+            flags = PSL_FLAG_PLAIN | section
 
-    punycode = line.decode('utf-8').encode('idna')
+        punycode = line.decode("utf-8").encode("idna")
 
-    if punycode in psl:
-      """Found existing entry:
-         Combination of exception and plain rule is ambiguous
-           !foo.bar
-            foo.bar
+        if punycode in psl:
+            """Found existing entry:
+            Combination of exception and plain rule is ambiguous
+              !foo.bar
+               foo.bar
 
-         Allowed:
-           !foo.bar + *.foo.bar
-            foo.bar + *.foo.bar
-      """
-      print('Found %s/%X (now %X)' % punycode, psl[punycode], flags)
-      continue
+            Allowed:
+              !foo.bar + *.foo.bar
+               foo.bar + *.foo.bar
+            """
+            print("Found %s/%X (now %X)" % punycode, psl[punycode], flags)
+            continue
 
-    if utf_mode:
-      psl[line] = flags
-    psl[punycode] = flags
+        if utf_mode:
+            psl[line] = flags
+        psl[punycode] = flags
 
-#  with open("psl.out", 'w') as outfile:
-#    for (domain, flags) in sorted(psl.iteritems()):
-#      outfile.write(domain + "%X" % (flags & 0x0F) + "\n")
+    #  with open("psl.out", 'w') as outfile:
+    #    for (domain, flags) in sorted(psl.iteritems()):
+    #      outfile.write(domain + "%X" % (flags & 0x0F) + "\n")
 
-  return [domain + bytes('%X' % (flags & 0x0F), **codecs) for (domain, flags) in sorted(psl.items())]
+    return [
+        domain + bytes("%X" % (flags & 0x0F), **codecs)
+        for (domain, flags) in sorted(psl.items())
+    ]
 
 
 def usage():
-  """Prints the usage"""
-  print('usage: %s [options] infile outfile' % sys.argv[0])
-  print('  --output-format=cxx     Write DAFSA as C/C++ code (default)')
-  print('  --output-format=cxx+    Write DAFSA as C/C++ code plus statistical assignments')
-  print('  --output-format=binary  Write DAFSA binary data')
-  print('  --encoding=ascii        7-bit ASCII mode')
-  print('  --encoding=utf-8        UTF-8 mode (default)')
-  exit(1)
+    """Prints the usage"""
+    print("usage: %s [options] infile outfile" % sys.argv[0])
+    print("  --output-format=cxx     Write DAFSA as C/C++ code (default)")
+    print(
+        "  --output-format=cxx+    Write DAFSA as C/C++ code plus statistical assignments"  # noqa: E501
+    )
+    print("  --output-format=binary  Write DAFSA binary data")
+    print("  --encoding=ascii        7-bit ASCII mode")
+    print("  --encoding=utf-8        UTF-8 mode (default)")
+    exit(1)
 
 
 def main():
-  """Convert PSL file into C or binary DAFSA file"""
-  if len(sys.argv) < 3:
-    usage()
+    """Convert PSL file into C or binary DAFSA file"""
+    if len(sys.argv) < 3:
+        usage()
 
-  converter = words_to_cxx
-  parser = parse_psl
-  utf_mode = True
+    converter = words_to_cxx
+    parser = parse_psl
+    utf_mode = True
 
-  codecs = dict()
-  if sys.version_info.major > 2:
-    codecs['encoding'] = 'utf-8'
+    codecs = dict()
+    if sys.version_info.major > 2:
+        codecs["encoding"] = "utf-8"
 
-  for arg in sys.argv[1:-2]:
-    # Check --input-format for backward compatibility
-    if arg.startswith('--input-format='):
-      value = arg[15:].lower()
-      if value == 'psl':
-        parser = parse_psl
-      else:
-        print("Unknown input format '%s'" % value)
-        return 1
-    elif arg.startswith('--output-format='):
-      value = arg[16:].lower()
-      if value == 'binary':
-        converter = words_to_binary
-      elif value == 'cxx':
-        converter = words_to_cxx
-      elif value == 'cxx+':
-        converter = words_to_cxx_plus
-      else:
-        print("Unknown output format '%s'" % value)
-        return 1
-    elif arg.startswith('--encoding='):
-      value = arg[11:].lower()
-      if value == 'ascii':
-        utf_mode = False
-      elif value == 'utf-8':
-        utf_mode = True
-      else:
-        print("Unknown encoding '%s'" % value)
-        return 1
+    for arg in sys.argv[1:-2]:
+        # Check --input-format for backward compatibility
+        if arg.startswith("--input-format="):
+            value = arg[15:].lower()
+            if value == "psl":
+                parser = parse_psl
+            else:
+                print("Unknown input format '%s'" % value)
+                return 1
+        elif arg.startswith("--output-format="):
+            value = arg[16:].lower()
+            if value == "binary":
+                converter = words_to_binary
+            elif value == "cxx":
+                converter = words_to_cxx
+            elif value == "cxx+":
+                converter = words_to_cxx_plus
+            else:
+                print("Unknown output format '%s'" % value)
+                return 1
+        elif arg.startswith("--encoding="):
+            value = arg[11:].lower()
+            if value == "ascii":
+                utf_mode = False
+            elif value == "utf-8":
+                utf_mode = True
+            else:
+                print("Unknown encoding '%s'" % value)
+                return 1
+        else:
+            usage()
+
+    if sys.argv[-2] == "-":
+        with open(sys.argv[-1], "wb") as outfile:
+            outfile.write(
+                converter(parser(sys.stdin, utf_mode, codecs), utf_mode, codecs)
+            )
     else:
-      usage()
+        """Some statistical data for --output-format=cxx+"""
+        global psl_input_file, psl_nsuffixes, psl_nexceptions, psl_nwildcards
 
-  if sys.argv[-2] == '-':
-    with open(sys.argv[-1], 'wb') as outfile:
-      outfile.write(converter(parser(sys.stdin, utf_mode, codecs), utf_mode, codecs))
-  else:
-    """Some statistical data for --output-format=cxx+"""
-    global psl_input_file, psl_nsuffixes, psl_nexceptions, psl_nwildcards
+        psl_input_file = sys.argv[-2]
+        psl_nsuffixes = 0
+        psl_nexceptions = 0
+        psl_nwildcards = 0
 
-    psl_input_file = sys.argv[-2]
-    psl_nsuffixes = 0
-    psl_nexceptions = 0
-    psl_nwildcards = 0
+        with open(sys.argv[-2], "r", **codecs) as infile, open(
+            sys.argv[-1], "wb"
+        ) as outfile:
+            outfile.write(converter(parser(infile, utf_mode, codecs), utf_mode, codecs))
 
-    with open(sys.argv[-2], 'r', **codecs) as infile, open(sys.argv[-1], 'wb') as outfile:
-      outfile.write(converter(parser(infile, utf_mode, codecs), utf_mode, codecs))
-
-  return 0
+    return 0
 
 
-if __name__ == '__main__':
-  sys.exit(main())
+if __name__ == "__main__":
+    sys.exit(main())
