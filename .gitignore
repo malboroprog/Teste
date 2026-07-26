@@ -16,3 +16,4 @@ node_modules/
 tmp/py-backups/
 *.bak
 node_modules/
+Doc/html/_downloads/
