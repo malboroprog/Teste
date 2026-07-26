@@ -10,3 +10,6 @@ Lib
 
 dist
 
+tmp/py-backups/
+*.bak
+node_modules/
