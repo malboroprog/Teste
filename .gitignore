@@ -17,3 +17,4 @@ tmp/py-backups/
 *.bak
 node_modules/
 Doc/html/_downloads/
+validate_and_commit.ps1
