@@ -1,0 +1,18 @@
+﻿*** Begin Patch
+*** Update File: mock_client/mock_client.py
+@@
+-#!/usr/bin/env python3
+-import json
+-from http.server import BaseHTTPRequestHandler, HTTPServer
++#!/usr/bin/env python3
++import json
++from http.server import BaseHTTPRequestHandler, HTTPServer
+@@
+-class Handler(BaseHTTPRequestHandler):
++class Handler(BaseHTTPRequestHandler):
+     def do_POST(self):
+         content_length = int(self.headers['Content-Length'])
+         post_data = self.rfile.read(content_length)
+         try:
+             data = json.loads(post_data)
+*** End Patch
