@@ -1,0 +1,7 @@
+﻿[tool.ruff]
+exclude = [
+  "Doc/html/_downloads/",
+  "usr/",
+  "mingw64/",
+  "Lib/",
+]
