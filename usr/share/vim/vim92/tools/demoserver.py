@@ -17,9 +17,7 @@
 #
 # This requires Python 2.6 or later.
 
-from __future__ import print_function
 import json
-import socket
 import sys
 import threading
 
@@ -32,6 +30,7 @@ except ImportError:
 
 thesocket = None
 
+
 class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
 
     def handle(self):
@@ -40,27 +39,27 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
         thesocket = self.request
         while True:
             try:
-                data = self.request.recv(4096).decode('utf-8')
-            except socket.error:
+                data = self.request.recv(4096).decode("utf-8")
+            except OSError:
                 print("=== socket error ===")
                 break
-            if data == '':
+            if data == "":
                 print("=== socket closed ===")
                 break
-            print("received: {0}".format(data))
+            print(f"received: {data}")
             try:
                 decoded = json.loads(data)
             except ValueError:
                 print("json decoding failed")
-                decoded = [-1, '']
+                decoded = [-1, ""]
 
             # Send a response if the sequence number is positive.
             # Negative numbers are used for "eval" responses.
             if decoded[0] >= 0:
-                if decoded[1] == 'hello!':
+                if decoded[1] == "hello!":
                     response = "got it"
                     id = decoded[0]
-                elif decoded[1] == 'hello channel!':
+                elif decoded[1] == "hello channel!":
                     response = "got that"
                     # response is not to a specific message callback but to the
                     # channel callback, need to use ID zero
@@ -69,12 +68,14 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
                     response = "what?"
                     id = decoded[0]
                 encoded = json.dumps([id, response])
-                print("sending {0}".format(encoded))
-                self.request.sendall(encoded.encode('utf-8'))
+                print(f"sending {encoded}")
+                self.request.sendall(encoded.encode("utf-8"))
         thesocket = None
+
 
 class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
     pass
+
 
 if __name__ == "__main__":
     HOST, PORT = "localhost", 8765
@@ -91,7 +92,7 @@ if __name__ == "__main__":
     server_thread.start()
     print("Server loop running in thread: ", server_thread.name)
 
-    print("Listening on port {0}".format(PORT))
+    print(f"Listening on port {PORT}")
     while True:
         typed = sys.stdin.readline()
         if "quit" in typed:
@@ -100,8 +101,8 @@ if __name__ == "__main__":
         if thesocket is None:
             print("No socket yet")
         else:
-            print("sending {0}".format(typed))
-            thesocket.sendall(typed.encode('utf-8'))
+            print(f"sending {typed}")
+            thesocket.sendall(typed.encode("utf-8"))
 
     server.shutdown()
     server.server_close()
