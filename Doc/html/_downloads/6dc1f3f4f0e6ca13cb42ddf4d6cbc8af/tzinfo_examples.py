@@ -1,4 +1,4 @@
-﻿import datetime as dt
+import datetime as dt
 # A class capturing the platform's idea of local time.
 # (May result in wrong values on historical times in
 #  timezones where UTC offset and/or the DST rules had

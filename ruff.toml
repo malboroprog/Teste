@@ -1,4 +1,3 @@
-﻿[tool.ruff]
 exclude = [
   "Doc/html/_downloads/",
   "usr/",
