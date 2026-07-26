@@ -13,3 +13,6 @@ dist
 tmp/py-backups/
 *.bak
 node_modules/
+tmp/py-backups/
+*.bak
+node_modules/
